@@ -5,9 +5,8 @@ Created on Mon Oct 29 14:52:17 2018
 @author: MMann
 """
 
-
-
 from tsraster.calculate import calculateFeatures
+from tsraster.calculate import CreateTiff
 
 fc_parameters = {
 	    "mean": None,
@@ -15,7 +14,8 @@ fc_parameters = {
 	    "median":None,
 	    "minimum":None,
         "sum_values":None,
-	    "agg_linear_trend": [{"attr": 'slope', "chunk_len": 6, "f_agg": "min"},{"attr": 'slope', "chunk_len": 6, "f_agg": "max"}],
+	    "agg_linear_trend": [{"attr": 'slope', "chunk_len": 6, "f_agg": "min"},
+                          {"attr": 'slope', "chunk_len": 6, "f_agg": "max"}],
 	    "last_location_of_maximum":None,
 	    "last_location_of_maximum":None,
 	    "last_location_of_minimum":None,
@@ -33,12 +33,12 @@ fc_parameters = {
 
 #%%
 from pathlib import Path 
-p = Path('F:/5year/')
-folders = [x for x in p.iterdir() if x.is_dir()]
+p = Path('F:/5year')
+folders = [str(x) for x in p.iterdir() if x.is_dir() and '_features' not in str(x) and 'Fire' not in str(x) ]
 
 for folder in folders:
-    ts_features = calculateFeatures(folder,parameters=fc_parameters,reset_df=True,tiff_output=True)
+    print(folder)
+    ts_features = calculateFeatures(folder,parameters=fc_parameters,reset_df=False,tiff_output=True)
     print(ts_features.describe())
-
-
-
+    del ts_features
+ 
