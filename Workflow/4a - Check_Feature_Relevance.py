@@ -28,6 +28,8 @@ concatenated_df   = pd.concat(df_from_each_file,axis=1, ignore_index=False)
 concatenated_df.columns
 
 del df_from_each_file
+
+
 #%% read target data
 
 target_variable = "F:/5year/Fires/"
