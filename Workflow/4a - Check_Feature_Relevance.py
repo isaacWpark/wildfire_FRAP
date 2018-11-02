@@ -44,6 +44,7 @@ X_train, X_test, y_train, y_test = md.get_data(obj, scale=False)
 
 # allow for garbage collection of large objects
 del concatenated_df
+
 #%% Find relevant variables and combine Y and X data
 
 relevant_vars, X_train_relevant = checkRelevance2(X_train,y_train,fdr_level=0.01) #
