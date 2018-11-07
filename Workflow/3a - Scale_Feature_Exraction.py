@@ -6,8 +6,7 @@ Created on Mon Oct 29 14:52:17 2018
 """
 
 from tsraster.calculate import calculateFeatures
-from tsraster.calculate import CreateTiff
-
+ 
 fc_parameters = {
 	    "mean": None,
 	    "maximum": None,
