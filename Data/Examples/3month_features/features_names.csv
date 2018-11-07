@@ -1,6 +1,0 @@
-band,feature_name
-1,aet-value__maximum
-2,aet-value__mean
-3,aet-value__minimum
-4,aet-value__quantile__q_0.15
-5,aet-value__quantile__q_0.95
