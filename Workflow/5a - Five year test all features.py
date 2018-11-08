@@ -5,8 +5,6 @@ Created on Mon Nov  5 21:26:50 2018
 @author: mmann
 """
 
-import os 
-import pandas as pd
 from tsraster.calculate import calculateFeatures2
 from tsraster.calculate import checkRelevance2
  
@@ -40,8 +38,17 @@ parameters = {
     "skewness":None }
 
 
-#%%
-extracted_features = calculateFeatures2(path, parameters, reset_df=False, tiff_output=True)
+mask =  r"F:/Boundary/StatePoly_buf.tif"
+#path =r'F:/3month_ts/'
+missing_value =-9999
+tiff_output=True
+
+extracted_features = calculateFeatures2(path, 
+                                        parameters, 
+                                        mask=mask, 
+                                        reset_df=True, 
+                                        tiff_output=True, 
+                                        missing_value =-9999)
 
 extracted_features.head()
 
@@ -62,6 +69,13 @@ target_data_mask  = tr.mask_df(raster_mask,
                                original_df = target_data)
 
 
+#%%
+missing_mask =(extracted_features_mask['tmx__number_cwt_peaks__n_12'] == -9999)  
+
+target_data_mask = target_data_mask[~missing_mask]
+
+extracted_features_mask = extracted_features_mask[~missing_mask]
+
 #%% join and test train split yX data
 
 obj = [target_data_mask, extracted_features_mask]
@@ -72,10 +86,7 @@ X_train, X_test, y_train, y_test = md.get_data(obj,
                                                test_size=0.9,
                                                scale=False)
 
-
-#%%
  
-
 #%% Find relevant variables and combine Y and X data
 
 relevance_test, X_train_relevant = \
@@ -86,30 +97,47 @@ print(relevance_test)
 
 #%%
 
-from sklearn.ensemble import RandomForestRegressor, GradientBoostingRegressor, RandomForestClassifier
-from sklearn.metrics import accuracy_score,confusion_matrix, cohen_kappa_score
-
-def RandomForestClass(X_train, y_train, X_test, y_test):
-    RF = RandomForestClassifier(n_estimators=100,
-                               max_depth=10,
-                               min_samples_leaf=5,
-                               min_samples_split=5,
-                               random_state=42,
-                               oob_score = True)
-
-    model = RF.fit(X_train, y_train)
-    predict_test = model.predict(X=X_test)
-    
-    print("Train Accuracy :: ", accuracy_score(y_train, model.predict(X_train)))
-    print("Test Accuracy  :: ", accuracy_score(y_test, predict_test))
-    print("Kappa  :: ", cohen_kappa_score(y_test, predict_test))
-    
-    print("Test Confusion matrix ")
-    print(confusion_matrix(y_test, predict_test))
-    
-    return RF  
 
 RF =  RandomForestClass(X_train[X_train_relevant.columns], y_train, 
                         X_test[X_train_relevant.columns], 
                         y_test)
 
+#%% 
+
+GBoost, MSE, R_Squared = GradientBoosting(X_train[X_train_relevant.columns], 
+                                          y_train,
+                                           X_test[X_train_relevant.columns], 
+                                           y_test)
+
+
+
+#%%
+
+from sklearn.datasets import make_hastie_10_2
+from sklearn.ensemble import GradientBoostingClassifier
+from sklearn.ensemble.partial_dependence import plot_partial_dependence
+
+X, y = make_hastie_10_2(random_state=0)
+clf = GradientBoostingClassifier(n_estimators=100, learning_rate=1.0,
+                                 max_depth=1, random_state=0).fit(X, y)
+features = [0, 1, (0, 1)]
+fig, axs = plot_partial_dependence(clf, X, features) 
+
+#%%
+
+clf = GradientBoostingClassifier(n_estimators=1000, learning_rate=0.1,
+                                 max_depth=3, random_state=0).fit(X_train[X_train_relevant.columns], y_train)
+
+#%%
+features = [0, 2, (0, 1)]
+fig, axs = plot_partial_dependence(clf, X_train[X_train_relevant.columns], features) 
+
+#%%
+predict_test = clf.predict(X=X_test[X_train_relevant.columns])
+
+test_acc = accuracy_score(y_test, predict_test)
+kappa = cohen_kappa_score(y_test, predict_test)
+confusion = confusion_matrix(y_test, predict_test)
+
+print(kappa)
+print(confusion)
