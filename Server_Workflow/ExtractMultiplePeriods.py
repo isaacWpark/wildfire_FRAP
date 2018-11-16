@@ -33,7 +33,7 @@ fc_parameters = {
 
 from pathlib import Path 
 import os
-p = Path('/groups/manngroup/wildfire_FRAP/Data/Actual/Climate/')
+p = Path('~/wildfire_FRAP/Data/Actual/Climate/')
 folders = [str(x) for x in p.glob('*/*') if x.is_dir() and '_features' not in str(x) and 'Fire' not in str(x) ]
 
 

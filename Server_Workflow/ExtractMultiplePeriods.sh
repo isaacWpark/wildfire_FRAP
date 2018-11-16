@@ -18,4 +18,4 @@
 
 source activate /groups/manngroup/CondaEnvP3.6/
 
-python /groups/manngroup/wildfire_FRAP/Server_Workflow/ExtractMultiplePeriods.py
+python ~/wildfire_FRAP/Server_Workflow/ExtractMultiplePeriods.py

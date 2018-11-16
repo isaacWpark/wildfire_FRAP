@@ -1,4 +1,7 @@
 name: tsraster-env
+channels:
+  - conda-forge
+  - trentonoliphant
 dependencies:
   - numpy
   - pandas
