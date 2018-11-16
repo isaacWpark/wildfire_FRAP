@@ -2,7 +2,10 @@ name: tsraster-env
 channels:
   - conda-forge
   - trentonoliphant
+
 dependencies:
+  - python=3.6
+  - gdal
   - numpy
   - pandas
   - cython
@@ -18,9 +21,9 @@ dependencies:
   - geopandas
   - descartes
   - joblib
-  - datetime
   - scipy
-  - ipykernal
   - matplotlib
   - spyder
   
+  - pip:
+       - datetime

@@ -6,7 +6,7 @@
  
 # single node in the "short" partition
 #SBATCH -N 1
-#SBATCH -p 128gb
+#SBATCH -p short
 
 # half hour timelimit
 #SBATCH -t 48:00:00
@@ -15,7 +15,7 @@
 #SBATCH --mail-type=ALL 
 #SBATCH --mail-user=mmann1123@gwu.edu  
 
+source activate tsraster-env
 
-source activate /groups/manngroup/CondaEnvP3.6/
 
 python ~/wildfire_FRAP/Server_Workflow/ExtractMultiplePeriods.py

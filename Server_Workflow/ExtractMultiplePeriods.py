@@ -5,7 +5,7 @@ Created on Fri Nov 16 09:50:54 2018
 @author: mmann
 """
 
-from tsraster.calculate import calculateFeatures
+from tsraster.calculate import calculateFeatures2
  
 fc_parameters = {
 	    "mean": None,
@@ -33,9 +33,9 @@ fc_parameters = {
 
 from pathlib import Path 
 import os
-p = Path('~/wildfire_FRAP/Data/Actual/Climate/')
+p = Path('/home/mmann1123/wildfire_FRAP/Data/Actual/Climate/')
 folders = [str(x) for x in p.glob('*/*') if x.is_dir() and '_features' not in str(x) and 'Fire' not in str(x) ]
-
+folders
 
 for folder in folders:
     if not os.listdir(folder):
@@ -43,7 +43,13 @@ for folder in folders:
     else:    
         print("Directory is not empty")
         print(folder)
-        ts_features = calculateFeatures(folder,parameters=fc_parameters,reset_df=True,tiff_output=True)
+        ts_features = calculateFeatures2(path=folder, 
+					parameters=fc_parameters, 
+					mask="/home/mmann1123/wildfire_FRAP/Data/Actual/Boundary/StatePoly_buf.tif", 
+					reset_df=True, 
+					tiff_output=True, 
+					missing_value =-9999,
+					workers=8)
         print(ts_features.describe())
         del ts_features
  
