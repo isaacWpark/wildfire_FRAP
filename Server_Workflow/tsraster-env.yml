@@ -1,0 +1,23 @@
+name: tsraster-env
+dependencies:
+  - numpy
+  - pandas
+  - cython
+  - jupyter
+  - nb_conda
+  - pathlib 
+  - gdal
+  - fiona
+  - pyproj
+  - rtree
+  - shapely
+  - rasterio
+  - geopandas
+  - descartes
+  - joblib
+  - datetime
+  - scipy
+  - ipykernal
+  - matplotlib
+  - spyder
+  
