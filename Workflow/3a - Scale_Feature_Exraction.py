@@ -14,7 +14,7 @@ fc_parameters = {
 	    "minimum":None,
         "sum_values":None,
 	    "agg_linear_trend": [{"attr": 'slope', "chunk_len": 6, "f_agg": "min"},
-                          {"attr": 'slope', "chunk_len": 6, "f_agg": "max"}],
+                              {"attr": 'slope', "chunk_len": 6, "f_agg": "max"}],
 	    "last_location_of_maximum":None,
 	    "last_location_of_maximum":None,
 	    "last_location_of_minimum":None,
@@ -36,8 +36,34 @@ p = Path('F:/5year')
 folders = [str(x) for x in p.iterdir() if x.is_dir() and '_features' not in str(x) and 'Fire' not in str(x) ]
 
 for folder in folders:
-    print(folder)
-    ts_features = calculateFeatures(folder,parameters=fc_parameters,reset_df=False,tiff_output=True)
-    print(ts_features.describe())
-    del ts_features
+    if not os.listdir(folder):
+        print("Directory is empty")
+    else:    
+        print("Directory is not empty")
+        print(folder)
+        ts_features = calculateFeatures(folder,parameters=fc_parameters,reset_df=False,tiff_output=True)
+        print(ts_features.describe())
+        del ts_features
+     
+    
+    
+    #%%
+    
+from pathlib import Path 
+import os
+p = Path('./Documents/wildfire_FRAP/Data/Actual/Climate/')
+folders = [str(x) for x in p.glob('*/*') if x.is_dir() and '_features' not in str(x) and 'Fire' not in str(x) ]
+folders = folders[3:]
+folders
+#%%
+
+for folder in folders:
+    if not os.listdir(folder):
+        print("Directory is empty")
+    else:    
+        print("Directory is not empty")
+        print(folder)
+        ts_features = calculateFeatures(folder,parameters=fc_parameters,reset_df=True,tiff_output=True)
+        print(ts_features.describe())
+        del ts_features
  

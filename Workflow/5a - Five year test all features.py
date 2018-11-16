@@ -14,34 +14,36 @@ import tsraster.model  as md
 
 #%% Extract features 
 
-path = r"F://5year_Copy/"
+
 
 parameters = {
     "mean": None,
     "maximum": None,
-    "median":None,
-    "minimum":None,
-    "sum_values":None,
-    "agg_linear_trend": [{"attr": 'slope', "chunk_len": 6, "f_agg": "min"},
-                          {"attr": 'slope', "chunk_len": 6, "f_agg": "max"}],
-    "last_location_of_maximum":None,
-    "last_location_of_minimum":None,
-    "longest_strike_above_mean":None,
-    "longest_strike_below_mean":None,
-    "count_above_mean":None,
-    "count_below_mean":None,
-    #"mean_abs_change":None,
-    "mean_change":None,
-    "number_cwt_peaks":[{"n": 6},{"n": 12}],
-    "quantile":[{"q": 0.15},{"q": 0.05},{"q": 0.85},{"q": 0.95}],
-    "ratio_beyond_r_sigma":[{"r": 2},{"r": 3}], #Ratio of values that are more than r*std(x) (so r sigma) away from the mean of x.
-    "skewness":None }
+    #"median":None,
+    #"minimum":None,
+    #"sum_values":None,
+    #"agg_linear_trend": [{"attr": 'slope', "chunk_len": 6, "f_agg": "min"},
+    #                      {"attr": 'slope', "chunk_len": 6, "f_agg": "max"}],
+    #"last_location_of_maximum":None,
+    #"last_location_of_minimum":None,
+    #"longest_strike_above_mean":None,
+    #"longest_strike_below_mean":None,
+    #"count_above_mean":None,
+    #"count_below_mean":None,
+    #"mean_change":None,
+    #"number_cwt_peaks":[{"n": 6},{"n": 12}],
+    #"quantile":[{"q": 0.15},{"q": 0.05},{"q": 0.85},{"q": 0.95}],
+    #"ratio_beyond_r_sigma":[{"r": 2},{"r": 3}], #Ratio of values that are more than r*std(x) (so r sigma) away from the mean of x.
+    #"skewness":None 
+    }
 
+path = r"F://3month/"
 
 mask =  r"F:/Boundary/StatePoly_buf.tif"
-#path =r'F:/3month_ts/'
+
 missing_value =-9999
-tiff_output=True
+
+
 
 extracted_features = calculateFeatures2(path, 
                                         parameters, 
@@ -116,12 +118,11 @@ GBoost, MSE, R_Squared = GradientBoosting(X_train[X_train_relevant.columns],
 from sklearn.datasets import make_hastie_10_2
 from sklearn.ensemble import GradientBoostingClassifier
 from sklearn.ensemble.partial_dependence import plot_partial_dependence
+from sklearn.ensemble.partial_dependence import partial_dependence
+import numpy as np
+from mpl_toolkits.mplot3d import Axes3D
+import matplotlib.pyplot as plt
 
-X, y = make_hastie_10_2(random_state=0)
-clf = GradientBoostingClassifier(n_estimators=100, learning_rate=1.0,
-                                 max_depth=1, random_state=0).fit(X, y)
-features = [0, 1, (0, 1)]
-fig, axs = plot_partial_dependence(clf, X, features) 
 
 #%%
 
@@ -129,8 +130,35 @@ clf = GradientBoostingClassifier(n_estimators=1000, learning_rate=0.1,
                                  max_depth=3, random_state=0).fit(X_train[X_train_relevant.columns], y_train)
 
 #%%
-features = [0, 2, (0, 1)]
-fig, axs = plot_partial_dependence(clf, X_train[X_train_relevant.columns], features) 
+names = X_train_relevant.columns
+features = [0,1 , (1, 2)]
+fig, axs = plot_partial_dependence(clf,    
+                                   X_train[X_train_relevant.columns], 
+                                   features, 
+                                   feature_names=names) 
+
+
+#%%
+
+target_feature = (0, 1)
+pdp, axes = partial_dependence(clf, target_feature,
+                               X=X_train[X_train_relevant.columns], grid_resolution=50)
+XX, YY = np.meshgrid(axes[0], axes[1])
+Z = pdp[0].reshape(list(map(np.size, axes))).T
+ax = Axes3D(fig)
+surf = ax.plot_surface(XX, YY, Z, rstride=1, cstride=1,
+                       cmap=plt.cm.BuPu, edgecolor='k')
+ax.set_xlabel(names[target_feature[0]])
+ax.set_ylabel(names[target_feature[1]])
+ax.set_zlabel('Partial dependence')
+#  pretty init view
+ax.view_init(elev=22, azim=122)
+plt.colorbar(surf)
+plt.suptitle('Partial dependence of house value on median\n'
+             'age and average occupancy')
+plt.subplots_adjust(top=0.9)
+
+plt.show()
 
 #%%
 predict_test = clf.predict(X=X_test[X_train_relevant.columns])
