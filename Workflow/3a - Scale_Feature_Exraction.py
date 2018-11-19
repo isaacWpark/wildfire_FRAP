@@ -43,7 +43,6 @@ for folder in folders:
         print(folder)
         ts_features = calculateFeatures(folder,parameters=fc_parameters,reset_df=False,tiff_output=True)
         print(ts_features.describe())
-        del ts_features
      
     
     

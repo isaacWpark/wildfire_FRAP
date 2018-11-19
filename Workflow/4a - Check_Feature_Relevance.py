@@ -7,37 +7,26 @@ Created on Mon Oct 29 20:34:08 2018
 
 import os 
 import pandas as pd
-from tsraster.calculate import checkRelevance
+from tsraster.prep import combine_extracted_features
 from tsraster.calculate import checkRelevance2
 
 import tsraster.prep  as tr
 import tsraster.model  as md
+from re import sub
+from pathlib import Path
+
 
 
 #%% append all features to one dataframe
-
-path = r'F:/5year/'
-
-all_files = [os.path.join(root, name)
-             for root, dirs, files in os.walk(path)
-             for name in files
-             if name.endswith(( "features.csv"))]
-
-df_from_each_file = (pd.read_csv(f) for f in all_files)
-
-concatenated_df   = pd.concat(df_from_each_file,axis=1, 
-                              ignore_index=False)
-
-concatenated_df.columns
-
-
-del df_from_each_file
+path = r'G:\Climate_feature_subset_train'
+ 
+concatenated_df_train = combine_extracted_features(path,write_out=False)
 
 #%% # Mask all values that are outside of the buffered state boundary
 
 raster_mask = u"F:/Boundary/StatePoly_buf.tif"
 concatenated_df_mask  = tr.mask_df(raster_mask,
-                                   original_df=concatenated_df)
+                                   original_df=concatenated_df_train)
 
 
 #%% read target data & mask out non-CA values
