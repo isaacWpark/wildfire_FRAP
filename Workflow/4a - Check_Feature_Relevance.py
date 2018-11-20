@@ -7,14 +7,15 @@ Created on Mon Oct 29 20:34:08 2018
 
 import os 
 import pandas as pd
-from tsraster.prep import combine_extracted_features
+from tsraster.prep import combine_extracted_features, combine_target_rasters
 from tsraster.calculate import checkRelevance2
 
 import tsraster.prep  as tr
 import tsraster.model  as md
 from re import sub
 from pathlib import Path
-import glob
+
+
 
 
 #%% append all features to one dataframe
@@ -26,18 +27,9 @@ concatenated_df_train = combine_extracted_features(path,write_out=False)
 #%%
 path = r"C:\Users\mmann\Documents\wildfire_FRAP\Data\Actual\Fires\Outputs"
 target_file_prefix = 'fire_'
-#def combine_target_rasters(path, target_file_prefix):
-targets = glob.glob(("{}/**/"+target_file_prefix+"*.tif").format(path), 
-                    recursive=True)
-targets_years = [sub(r'\D', "", i) for i in targets]
 
-series_from_each_file = [tr.targetData(targets[i]).rename(targets_years[i]+'-Y') for i in range(len(targets_years))]
 
-# create joined df with all target data
-concatenated_df   = pd.concat(series_from_each_file,
-                              axis=1, 
-                              ignore_index=False)
-
+concatenated_target_df = combine_target_rasters(path,target_file_prefix )
 
 #%% # Mask all values that are outside of the buffered state boundary
 
@@ -45,8 +37,7 @@ raster_mask = u"F:/Boundary/StatePoly_buf.tif"
 concatenated_df_mask  = tr.mask_df(raster_mask,
                                    original_df=concatenated_df_train)
 
-
-
+ 
 
 
 #%% read target data & mask out non-CA values
