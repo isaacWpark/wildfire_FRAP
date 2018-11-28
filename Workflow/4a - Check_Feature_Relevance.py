@@ -5,52 +5,57 @@ Created on Mon Oct 29 20:34:08 2018
 @author: MMann
 """
 
-import os 
 import pandas as pd
 from tsraster.prep import combine_extracted_features, combine_target_rasters
 from tsraster.calculate import checkRelevance2
 
 import tsraster.prep  as tr
 import tsraster.model  as md
-from re import sub
-from pathlib import Path
-
-
 
 
 #%% append all features to one dataframe
+
 path = r'G:\Climate_feature_subset_train'
- 
-concatenated_df_train = combine_extracted_features(path,write_out=False)
+
+concatenated_attribute_df = combine_extracted_features(path,write_out=False)
 
 
-#%%
-path = r"C:\Users\mmann\Documents\wildfire_FRAP\Data\Actual\Fires\Outputs"
+#%%  collect multitple years of Y (target) data
+
+path = r"G:\Fire_target_train"
 target_file_prefix = 'fire_'
 
-
-concatenated_target_df = combine_target_rasters(path,target_file_prefix )
-
-#%% # Mask all values that are outside of the buffered state boundary
-
-raster_mask = u"F:/Boundary/StatePoly_buf.tif"
-concatenated_df_mask  = tr.mask_df(raster_mask,
-                                   original_df=concatenated_df_train)
-
- 
+concatenated_target_df = combine_target_rasters(path,target_file_prefix,write_out=False)
 
 
-#%% read target data & mask out non-CA values
 
-target_data = tr.targetData("F:/5year/Fires/")
+#%% mask both the attribute data and targets 
 
-target_data_mask  = tr.mask_df(raster_mask, 
-                               original_df = target_data)
+raster_mask =u"F:/Boundary/StatePoly_buf.tif"
+original_df = [concatenated_attribute_df, concatenated_target_df]
+
+mask_attributes_df, mask_target_df = tr.mask_df(raster_mask, original_df)
+
+
+
+#%% switch panel data from wide to long format
+import re 
+target = mask_target_df
+features = mask_attributes_df
+sep='-'
+
+target_ln, features_ln = wide_to_long_target_features(target,features,sep='-')
+
+
+
+#%% add lagged variables 
+
+
 
 
 #%% join and test train split yX data
 
-obj = [target_data_mask,concatenated_df_mask]
+obj = [target_ln,features_ln]
 
 #from sklearn.preprocessing import StandardScaler as scaler
 X_train, X_test, y_train, y_test = md.get_data(obj, 
@@ -79,7 +84,8 @@ print(R_Squared)
 
 #%%
 from sklearn.ensemble import RandomForestRegressor, GradientBoostingRegressor, RandomForestClassifier
-from sklearn.metrics import accuracy_score,confusion_matrix
+from sklearn.metrics import accuracy_score,confusion_matrix, cohen_kappa_score
+from sklearn.ensemble import GradientBoostingClassifier
 
 def RandomForestClass(X_train, y_train, X_test, y_test):
     RF = RandomForestClassifier(n_estimators=100,
@@ -99,6 +105,23 @@ def RandomForestClass(X_train, y_train, X_test, y_test):
     return RF  
 
 RF =  RandomForestClass(X_train_relevant, y_train, X_test_relevant, y_test)
+
+
+#%%
+
+clf = GradientBoostingClassifier(n_estimators=1000, learning_rate=0.1,
+                                 max_depth=3, random_state=0).fit(X_train[X_train_relevant.columns], y_train)
+
+#%%
+predict_test = clf.predict(X=X_test[X_train_relevant.columns])
+
+test_acc = accuracy_score(y_test, predict_test)
+kappa = cohen_kappa_score(y_test, predict_test)
+confusion = confusion_matrix(y_test, predict_test)
+
+print(kappa)
+print(confusion)
+
 
 #%% Look at feature importance
 
