@@ -71,21 +71,18 @@ features_ln = panel_lag_1(features_ln,
                           col_names=lag_vars, 
                           group_by_index ='index')
 
-
-#%%
-
- 
-
-#%% join and test train split yX data
+  
+#%% join and test train split yX data with pixels as indep groupings 
 
 
 obj = [target_ln,features_ln]
 
-#from sklearn.preprocessing import StandardScaler as scaler
+# test train split accounting for pixel id groupings 
 X_train, X_test, y_train, y_test = get_data(obj,
                                             stratify=True,
                                             test_size=0.9,
-                                            scale=False)
+                                            scale=False,
+                                            groups =  features_ln.index.get_level_values('index'))
 
 # allow for garbage collection of large objects
 #del concatenated_df, concatenated_df_mask, target_data_mask
@@ -193,5 +190,12 @@ rasters = tr.image_to_array(path)[:,:,0]
 plt.imshow(rasters)
 plt.set_cmap("Reds")
 plt.show()
+
+
+
+ # fit cv will groups 
+rs=sklearn.model_selection.RandomizedSearchCV(forest,parameters,scoring='roc_auc',cv=gkf,n_iter=10)
+
+rs.fit(X,y,groups=groups)
 
  
