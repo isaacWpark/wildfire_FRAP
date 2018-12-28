@@ -7,7 +7,6 @@ Created on Mon Dec  3 15:35:27 2018
 
 
 import tsraster.prep as tr
- 
 import numpy as np
 import glob
 import os.path
@@ -25,13 +24,19 @@ from pathlib import Path
 poly = 'F:/Boundary/Jepson.shp' 
 raster_ex = r'F:/5year/aet/aet-201201.tif'
 raster_path_prefix = None
-buffer_poly_cells=10
+buffer_poly_cells=0
 field_name = 'JEPSON_ID'
+nodata=-9999
+plot_output = True 
+
+a = tr.poly_to_series(poly,raster_ex, field_name, nodata=-9999, plot_output=True)
+a.describe()
 
 
 #%%
 
-#def poly_to_series(poly,raster_ex, field_name, buffer_poly_cells=0):
+#def poly_to_series(poly,raster_ex, field_name,  nodata=-9999, plot_output=True):
+    
 '''
 Rasterizes polygons by assigning a value 1.
 It can also add a buffer at a distance that is multiples of the example raster resolution
@@ -39,7 +44,9 @@ It can also add a buffer at a distance that is multiples of the example raster r
 :param poly: polygon to to convert to raster
 :param raster_ex: example tiff
 :param raster_path_prefix: directory path to the output file example: 'F:/Boundary/StatePoly_buf'
-:param buffer_poly_cells: buffer size in cell count example: 1 = buffer by one cell
+:param nodata: (int or float, optional) – Used as fill value for all areas not covered by input geometries.
+:param nodata: (True False, optional) – Plot rasterized polygon data? 
+
 :return: a GeoTiff raster
 '''
 
@@ -50,50 +57,54 @@ if ('poly' in locals()):
 else:
     poly = poly
 
-print(poly.head(3))
 
 # get example metadata
 with rasterio.open(raster_ex) as src:
     array = src.read()
     profile = src.profile
-    profile.update(dtype=rasterio.float32, count=1, compress='lzw',nodata=-9999)
+    profile.update(dtype=rasterio.float32, count=1, compress='lzw',nodata=nodata)
     out_arr = src.read(1) # get data from first band, this gets updated in write
-    out_arr.fill(0) #set all values of raster to zero
+    out_arr.fill(nodata) #set all values of raster to zero
 
 
 # reproject polygon to match crs of raster
 poly = poly.to_crs(src.crs)
 
-# buffer polygon to avoid edge effects
-if buffer_poly_cells != 0:
-    poly['geometry'] = poly.buffer(buffer_poly_cells*src.res[0] ) # this creates an empty polygon geoseries
 
-#%%
-#if raster_path_prefix is not None:
-#    # Write to tif, using the same profile as the source
-#    with rasterio.open(raster_path_prefix+'.tif', 'w', **profile) as dst:
-#        # generator of geom, value pairs to use in rasterizing
-#        shapes = ((geom,value) for geom, value in zip(poly.geometry, poly[field_name]))    
-#        #rasterize shapes
-#        burned_value = features.rasterize(shapes=shapes, fill=0, out=out_arr, transform=dst.transform)        
-#        dst.write(burned_value,1)
-#        
-#else:
 # generator of geom, value pairs to use in rasterizing
 shapes = ((geom,value) for geom, value in zip(poly.geometry, poly[field_name]))
 
 #rasterize shapes
-burned_value = features.rasterize(shapes=shapes, fill=0, out=out_arr, transform=src.transform)
+burned_value = features.rasterize(shapes=shapes, fill=nodata, out=out_arr, transform=src.transform)
 
- #   return burned_value 
 
 #%%
-import matplotlib.pyplot as plt 
+if plot_output == True:
+    import matplotlib.pyplot as plt 
+    plt_burned_value = burned_value.copy()
+    plt_burned_value[plt_burned_value==nodata] = np.NaN
+    plt.imshow(plt_burned_value)
+    plt.set_cmap("Reds")
+    plt.colorbar( )
+    plt.show()
 
-plt.imshow(burned_value)
-plt.set_cmap("Reds")
-plt.colorbar( )
-plt.show()
+# convert to array 
+rows, cols = burned_value.shape
+data = burned_value.reshape(rows*cols, 1)
+
+# create index
+index = pd.RangeIndex(start=0, stop=len(data), step=1) 
+
+# create wide df with images as columns
+df = pd.DataFrame(data=data[:,:],
+                  index=index, 
+                  dtype=np.float32, 
+                  columns=[field_name])
+#%%
+return burned_value
+
+#%%
+
 
 
 

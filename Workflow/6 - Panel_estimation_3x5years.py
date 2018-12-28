@@ -5,21 +5,35 @@ Created on Mon Oct 29 20:34:08 2018
 @author: MMann
 """
 
-import pandas as pd
 from tsraster.prep import combine_extracted_features, combine_target_rasters, wide_to_long_target_features,unmask_df,panel_lag_1
 from tsraster.calculate import checkRelevance2
 from numpy import NaN
 
 import tsraster.prep  as tr
 import tsraster.model  as md
-import rasterio
+import rasterio as rio
 import matplotlib.pyplot as plt
+import pandas as pd
 
 #%% append all features to one dataframe
 
 path = r'G:\Climate_feature_subset_train'
 
 concatenated_attribute_df = combine_extracted_features(path,write_out=False)
+
+#%% append other shapefile data 
+
+# rasterize the state polygon to match inputs 
+
+#jepson = tr.poly_to_series(poly = 'F:/Boundary/Jepson.shp',
+#               raster_ex = r'F:/5year/aet/aet-201201.tif', 
+#               field_name = 'JEPSON_ID', 
+#               nodata=-9999, 
+#               plot_output=True)
+#
+#concatenated_attribute_df = pd.concat([concatenated_attribute_df,jepson],
+#                                axis=1, 
+#                                ignore_index=False)
 
 
 #%%  collect multitple years of Y (target) data
@@ -31,7 +45,7 @@ concatenated_target_df = combine_target_rasters(path,
                                                 target_file_prefix,
                                                 write_out=False)
 
-
+#%%
 
 #%% mask both the attribute data and targets 
 
@@ -42,14 +56,53 @@ mask_attributes_df, mask_target_df = tr.mask_df(raster_mask,
                                                 original_df,  
                                                 missing_value=-9999)
 
-
-
+#%%
+ 
 #%% switch panel data from wide to long format
+
+# stub name for jepson issue !!!!!!  
 
 target_ln, features_ln = wide_to_long_target_features(target = mask_target_df,
                                                       features = mask_attributes_df,
                                                       sep='-')
- 
+
+#%%
+import io
+data = io.StringIO('''Fruit,Color,Count,Price
+Apple,Red,3,$1.29
+Apple,Green,9,$0.99
+Pear,Red,25,$2.59
+Pear,Green,26,$2.79
+Lime,Green,99,$0.39
+''')
+df_unindexed = pd.read_csv(data)
+df = df_unindexed.set_index(['Fruit', 'Color'])
+df
+
+join2 = io.StringIO('''Fruit,Count2
+Apple,3
+Pear,25
+Lime,99
+''')
+join2 = pd.read_csv(join2)
+join2 = join2.set_index(['Fruit'])
+join2
+#df.join(join2, on='Fruit')
+df['count2'] = df.index.get_level_values('Fruit').map(join2['Count2'].get)
+
+
+#%% append other shapefile data 
+
+# rasterize the state polygon to match inputs 
+
+jepson =  tr.poly_to_series(poly = 'F:/Boundary/Jepson.shp',
+               raster_ex = r'F:/5year/aet/aet-201201.tif', 
+               field_name = 'JEPSON_ID', 
+               nodata=-9999, 
+               plot_output=True)
+jepson.head()
+
+features_ln  = features_ln.join(jepson, on=['index'])
 
 
 #%% add lagged variables 
@@ -71,7 +124,11 @@ features_ln = panel_lag_1(features_ln,
                           col_names=lag_vars, 
                           group_by_index ='index')
 
-  
+#%%  add other polygon data 
+
+df.join(join2,on = 'Fruit')
+
+
 #%% join and test train split yX data with pixels as indep groupings 
 
 
