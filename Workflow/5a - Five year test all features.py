@@ -6,9 +6,10 @@ Created on Mon Nov  5 21:26:50 2018
 """
 
 from tsraster.calculate import extract_features,calculateFeatures, MultiprocessingDistributor,checkRelevance
-from tsraster.prep import mask_df
- 
+from tsraster.prep import mask_df, image_to_series, read_my_df, if_series_to_df, path_to_var, set_df_mindex,image_to_series_simple, unmask_from_mask
 import tsraster.prep  as tr
+import tsraster.calculate  as ca
+
 import tsraster.model  as md
 import pandas as pd
 import os
@@ -38,113 +39,97 @@ parameters = {
     #"skewness":None 
     }
 
-path = r"F://3month/"
-
-mask =  r"F:/Boundary/StatePoly_buf.tif"
-
-missing_value =-9999
-
-reset_df=False
-tiff_output=False
-#%%
-extracted_features = calculateFeatures(path, 
-                                        parameters, 
-                                        #mask=mask, 
-                                        reset_df=True, 
-                                        tiff_output=True#, 
-                                        #missing_value =-9999
-                                        )
-
-extracted_features.head()
+extracted_features = ca.calculateFeatures(path = r"F://3month/", 
+                                          parameters = {
+                                                "mean": None,
+                                                "maximum": None}, 
+                                          reset_df=False,
+                                          raster_mask =  r"F:/Boundary/StatePoly_buf.tif"  ,
+                                          tiff_output=True,
+                                          workers = 1)
 
 #%%
-from tsfresh.utilities.distribution import LocalDaskDistributor
-
-def read_my_df(path):
-    my_df = pd.read_csv(os.path.join(path,'my_df.csv'))
-    my_df.set_index(['pixel_id', 'time'], inplace=True)
-    # add columns needed for tsfresh
-    my_df['pixel_id'] = my_df.index.get_level_values('pixel_id') 
-    my_df['time'] = my_df.index.get_level_values('time') 
-    return(my_df)
-
-reset_df=False
+path = r"F://3month_ts/"
+parameters = {
+                                                "mean": None,
+                                                "maximum": None}
+reset_df=True
+raster_mask =  r"F:/Boundary/StatePoly_buf.tif"
 tiff_output=False
-raster_mask =  u"F:/Boundary/StatePoly_buf.tif"
 workers = 1
 
-def calculateFeatures(path, parameters, reset_df,raster_mask=None ,tiff_output=True, workers = None):
-    '''
-    Calculates features or the statistical characteristics of time-series raster data.
-    It can also save features as a csv file (dataframe) and/or tiff file.
-    
-    :param path: directory path to the raster files
-    :param parameters: a dictionary of features to be extracted
-    :param reset_df: boolean option for existing raster inputs as dataframe
-    :param raster_mask: path to binary raster mask
-    :param tiff_output: boolean option for exporting tiff file
-    :return: extracted features as a dataframe and tiff file
-    '''
-    
-    if reset_df == False:
-        #if reset_df =F read in csv file holding saved version of my_df
-        my_df = read_my_df(path)
-            
-    else:
-        #if reset_df =T calculate ts_series and save csv
-        my_df = image_to_series(path)
-        print('df: '+os.path.join(path,'my_df.csv'))
-        my_df.to_csv(os.path.join(path,'my_df.csv'), chunksize=10000, index=False)
-    
-    
-    # mask 
-    if raster_mask is not None:
-        my_df = mask_df(raster_mask = raster_mask, 
-                        original_df = my_df)
-    
-    
-    if workers is not None:
-        #Distributor = MultiprocessingDistributor(n_workers=workers,
-        #                                         disable_progressbar=False,
-        #                                         progressbar_title="Feature Extraction")
-        Distributor = LocalDaskDistributor(n_workers=workers)
-    else:
-        Distributor = None
-    
-    extracted_features = extract_features(my_df, 
-                                          default_fc_parameters = parameters,
-                                          column_sort = "time",
-                                          column_value = "value",
-                                          column_id = "pixel_id",
-                                          chunksize = 1000,
-                                          distributor=Distributor
-                                          )
-    
-    
-    # change index name to match 
-    extracted_features.index.rename('pixel_id',inplace=True)
-    
-    return(extracted_features)
-    
-calculateFeatures(path, parameters, reset_df,raster_mask=None ,tiff_output=True, 
-                  workers = 1)
+#def calculateFeatures(path, parameters, reset_df,raster_mask=None ,tiff_output=True, workers = None):
+'''
+Calculates features or the statistical characteristics of time-series raster data.
+It can also save features as a csv file (dataframe) and/or tiff file.
+
+:param path: directory path to the raster files
+:param parameters: a dictionary of features to be extracted
+:param reset_df: boolean option for existing raster inputs as dataframe
+:param raster_mask: path to binary raster mask
+:param tiff_output: boolean option for exporting tiff file
+:return: extracted features as a dataframe and tiff file
+'''
+
+if reset_df == False:
+    #if reset_df =F read in csv file holding saved version of my_df
+    my_df = tr.read_my_df(path)
+        
+else:
+    #if reset_df =T calculate ts_series and save csv
+    my_df = image_to_series(path)
+    print('df: '+os.path.join(path,'my_df.csv'))
+    my_df.to_csv(os.path.join(path,'my_df.csv'), chunksize=10000, index=False)
+
 
 #%%
+# mask 
+if raster_mask is not None:
+    my_df = tr.mask_df(raster_mask = raster_mask, 
+                    original_df = my_df)
+
+
+if workers is not None:
+    Distributor = MultiprocessingDistributor(n_workers=workers,
+                                             disable_progressbar=False,
+                                             progressbar_title="Feature Extraction")
+    #Distributor = LocalDaskDistributor(n_workers=workers)
+else:
+    Distributor = None
+
+extracted_features = extract_features(my_df, 
+                                      default_fc_parameters = parameters,
+                                      column_sort = "time",
+                                      column_value = "value",
+                                      column_id = "pixel_id",
+                                      column_kind="kind", 
+                                      #chunksize = 1000,
+                                      distributor=Distributor
+                                      )
+
+
+#%%
+# change index name to match pixel and time period
+extracted_features.index.rename('pixel_id',inplace=True)
+extracted_features.reset_index(inplace=True, level=['pixel_id'])
+
+extracted_features['time'] = str(my_df.time.min())+"_"+str(my_df.time.max())
+extracted_features.set_index(['pixel_id', 'time'], inplace=True) 
+ 
+# unmask extracted features
+extracted_features = tr.unmask_from_mask(mask_df_output = extracted_features, 
+                                      missing_value = -9999,
+                                      raster_mask = raster_mask)
 
 # deal with output location 
 out_path = Path(path).parent.joinpath(Path(path).stem+"_features")
 out_path.mkdir(parents=True, exist_ok=True)
 
-# get file prefix
-if os.path.isdir(path):
-    prefix = os.path.basename(glob.glob("{}/**/*.tif".format(path), recursive=True)[0])[0:4]
-    
 # write out features to csv file
 print("features:"+os.path.join(out_path,'extracted_features.csv'))
-extracted_features.columns = [prefix + str(col) for col in extracted_features.columns]
 extracted_features.to_csv(os.path.join(out_path,'extracted_features.csv'), chunksize=10000)
 
-# write data frame
+# write out feature names 
 kr = pd.DataFrame(list(extracted_features.columns))
 kr.index += 1
 kr.index.names = ['band']
@@ -178,6 +163,7 @@ else:
     #export tiff
     CreateTiff(output_file, f2Array, driver, noData, GeoTransform, Projection, DataType, path=out_path)
     return extracted_features
+
 
 
 
