@@ -5,7 +5,8 @@ Created on Mon Oct 29 20:34:08 2018
 @author: MMann
 """
 
-from tsraster.prep import combine_extracted_features, combine_target_rasters, wide_to_long_target_features,unmask_df,panel_lag_1
+from tsraster.prep import combine_extracted_features, combine_target_rasters, \
+    wide_to_long_target_features,unmask_df,panel_lag_1, image_to_series_simple
 from tsraster.calculate import checkRelevance2
 from numpy import NaN
 
@@ -14,12 +15,16 @@ import tsraster.model  as md
 import rasterio as rio
 import matplotlib.pyplot as plt
 import pandas as pd
+import os
+from tsraster.prep import *
 
 #%% append all features to one dataframe
 
-path = r'G:\Climate_feature_subset_train'
+path = r'C:\Users\mmann\Documents\wildfire_FRAP\Data\Examples\Panel_Example\Climate'
 
 concatenated_attribute_df = combine_extracted_features(path,write_out=False)
+ 
+
 
 #%% append other shapefile data 
 
@@ -38,26 +43,24 @@ concatenated_attribute_df = combine_extracted_features(path,write_out=False)
 
 #%%  collect multitple years of Y (target) data
 
-path = r"G:\Fire_target_train"
+path = r"C:\Users\mmann\Documents\wildfire_FRAP\Data\Examples\Panel_Example\Fire"
 target_file_prefix = 'fire_'
 
 concatenated_target_df = combine_target_rasters(path,
                                                 target_file_prefix,
                                                 write_out=False)
-
-#%%
+ 
 
 #%% mask both the attribute data and targets 
 
-raster_mask =u"F:/Boundary/StatePoly_buf.tif"
+raster_mask =r"C:\Users\mmann\Documents\wildfire_FRAP\Data/Examples/buffer/StatePoly_buf.tif"
 original_df = [concatenated_attribute_df, concatenated_target_df]
 
 mask_attributes_df, mask_target_df = tr.mask_df(raster_mask, 
                                                 original_df,  
-                                                missing_value=-9999)
+                                                missing_value=-9999,
+                                                reset_index = False)
 
-#%%
- 
 #%% switch panel data from wide to long format
 
 # stub name for jepson issue !!!!!!  
@@ -107,22 +110,14 @@ features_ln  = features_ln.join(jepson, on=['index'])
 
 #%% add lagged variables 
  
-lag_vars = ['ppt__maximum',
- 'tmx__agg_linear_trend__f_agg_"max"__chunk_len_6__attr_"slope"',
- 'ppt__mean_change',
- 'cwd__agg_linear_trend__f_agg_"min"__chunk_len_6__attr_"slope"',
- 'ppt__agg_linear_trend__f_agg_"min"__chunk_len_6__attr_"slope"',
- 'pet__agg_linear_trend__f_agg_"max"__chunk_len_6__attr_"slope"',
- 'ppt__agg_linear_trend__f_agg_"max"__chunk_len_6__attr_"slope"',
- 'cwd__mean_change',
- 'tmx__agg_linear_trend__f_agg_"min"__chunk_len_6__attr_"slope"',
- 'ppt__median']   #[x for x in feature_importances.iloc[:10,0].index]
+lag_vars = ['ppt__median',
+ 'cwd__mean',
+ 'cwd__mean']    
 
 
-#features_ln = panel_lag_1(features_ln, col_names=features_ln.columns, group_by_index ='time')
 features_ln = panel_lag_1(features_ln, 
                           col_names=lag_vars, 
-                          group_by_index ='index')
+                          group_by_index ='pixel_id')
 
 #%%  add other polygon data 
 
@@ -134,25 +129,24 @@ df.join(join2,on = 'Fruit')
 
 obj = [target_ln,features_ln]
 
-# test train split accounting for pixel id groupings 
-X_train, X_test, y_train, y_test = get_data(obj,
+X_train, X_test, y_train, y_test = md.get_data(obj,
                                             stratify=True,
                                             test_size=0.9,
                                             scale=False,
-                                            groups =  features_ln.index.get_level_values('index'))
-
-# allow for garbage collection of large objects
-#del concatenated_df, concatenated_df_mask, target_data_mask
+                                            groups =  features_ln.index.get_level_values('pixel_id') )
 
 
 #%% Find relevant variables and combine Y and X data
 
-relevant_vars, X_train_relevant = checkRelevance2(X_train,y_train,fdr_level=0.001) #
+relevant_vars, X_train_relevant = checkRelevance2(x=X_train,
+                                                  y=y_train,
+                                                  ml_task='auto',
+                                                  fdr_level=0.001) #
 print(relevant_vars)
 
 X_test_relevant = X_test[X_train_relevant.columns]
 
-
+#%%
 
 #%%
 from sklearn.ensemble import RandomForestRegressor, GradientBoostingRegressor, RandomForestClassifier

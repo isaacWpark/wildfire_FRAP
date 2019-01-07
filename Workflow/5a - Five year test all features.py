@@ -6,7 +6,8 @@ Created on Mon Nov  5 21:26:50 2018
 """
 
 from tsraster.calculate import extract_features,calculateFeatures, MultiprocessingDistributor,checkRelevance
-from tsraster.prep import mask_df, image_to_series, read_my_df, if_series_to_df, path_to_var, set_df_mindex,image_to_series_simple, unmask_from_mask
+from tsraster.prep import mask_df, image_to_series, read_my_df, if_series_to_df, path_to_var, \
+set_df_mindex,image_to_series_simple, unmask_from_mask, set_df_index, reset_df_index
 import tsraster.prep  as tr
 import tsraster.calculate  as ca
 
@@ -38,7 +39,10 @@ parameters = {
     #"ratio_beyond_r_sigma":[{"r": 2},{"r": 3}], #Ratio of values that are more than r*std(x) (so r sigma) away from the mean of x.
     #"skewness":None 
     }
+#%%
 
+
+#%%
 extracted_features = ca.calculateFeatures(path = r"F://3month/", 
                                           parameters = {
                                                 "mean": None,
@@ -49,150 +53,23 @@ extracted_features = ca.calculateFeatures(path = r"F://3month/",
                                           workers = 1)
 
 #%%
-path = r"F://3month_ts/"
-parameters = {
-                                                "mean": None,
-                                                "maximum": None}
-reset_df=True
-raster_mask =  r"F:/Boundary/StatePoly_buf.tif"
-tiff_output=False
-workers = 1
-
-#def calculateFeatures(path, parameters, reset_df,raster_mask=None ,tiff_output=True, workers = None):
-'''
-Calculates features or the statistical characteristics of time-series raster data.
-It can also save features as a csv file (dataframe) and/or tiff file.
-
-:param path: directory path to the raster files
-:param parameters: a dictionary of features to be extracted
-:param reset_df: boolean option for existing raster inputs as dataframe
-:param raster_mask: path to binary raster mask
-:param tiff_output: boolean option for exporting tiff file
-:return: extracted features as a dataframe and tiff file
-'''
-
-if reset_df == False:
-    #if reset_df =F read in csv file holding saved version of my_df
-    my_df = tr.read_my_df(path)
-        
-else:
-    #if reset_df =T calculate ts_series and save csv
-    my_df = image_to_series(path)
-    print('df: '+os.path.join(path,'my_df.csv'))
-    my_df.to_csv(os.path.join(path,'my_df.csv'), chunksize=10000, index=False)
-
-
-#%%
-# mask 
-if raster_mask is not None:
-    my_df = tr.mask_df(raster_mask = raster_mask, 
-                    original_df = my_df)
-
-
-if workers is not None:
-    Distributor = MultiprocessingDistributor(n_workers=workers,
-                                             disable_progressbar=False,
-                                             progressbar_title="Feature Extraction")
-    #Distributor = LocalDaskDistributor(n_workers=workers)
-else:
-    Distributor = None
-
-extracted_features = extract_features(my_df, 
-                                      default_fc_parameters = parameters,
-                                      column_sort = "time",
-                                      column_value = "value",
-                                      column_id = "pixel_id",
-                                      column_kind="kind", 
-                                      #chunksize = 1000,
-                                      distributor=Distributor
-                                      )
-
-
-#%%
-# change index name to match pixel and time period
-extracted_features.index.rename('pixel_id',inplace=True)
-extracted_features.reset_index(inplace=True, level=['pixel_id'])
-
-extracted_features['time'] = str(my_df.time.min())+"_"+str(my_df.time.max())
-extracted_features.set_index(['pixel_id', 'time'], inplace=True) 
- 
-# unmask extracted features
-extracted_features = tr.unmask_from_mask(mask_df_output = extracted_features, 
-                                      missing_value = -9999,
-                                      raster_mask = raster_mask)
-
-# deal with output location 
-out_path = Path(path).parent.joinpath(Path(path).stem+"_features")
-out_path.mkdir(parents=True, exist_ok=True)
-
-# write out features to csv file
-print("features:"+os.path.join(out_path,'extracted_features.csv'))
-extracted_features.to_csv(os.path.join(out_path,'extracted_features.csv'), chunksize=10000)
-
-# write out feature names 
-kr = pd.DataFrame(list(extracted_features.columns))
-kr.index += 1
-kr.index.names = ['band']
-kr.columns = ['feature_name']
-kr.to_csv(os.path.join(out_path,"features_names.csv"))
-
-# write out features to tiff file
-if tiff_output == False:
-    return extracted_features
-else:
-    # get image dimension from raw data
-    rows, cols, num = image_to_array(path).shape
-    # get the total number of features extracted
-    matrix_features = extracted_features.values
-    num_of_layers = matrix_features.shape[1]
-    
-    #reshape the dimension of features extracted
-    f2Array = matrix_features.reshape(rows, cols, num_of_layers)
-    output_file = 'extracted_features.tiff'  
-    
-    #Get Meta Data from raw data
-    raw_data = read_images(path)
-    GeoTransform = raw_data[0].GetGeoTransform()
-    driver = gdal.GetDriverByName('GTiff')
-    
-    noData = -9999
-    
-    Projection = raw_data[0].GetProjectionRef()
-    DataType = gdal.GDT_Float32
-    
-    #export tiff
-    CreateTiff(output_file, f2Array, driver, noData, GeoTransform, Projection, DataType, path=out_path)
-    return extracted_features
-
-
-
-
-#%% # Mask all values that are outside of the buffered state boundary
-
+target_data = tr.image_to_series_simple("F:/5year/Fires/")
 raster_mask = u"F:/Boundary/StatePoly_buf.tif"
-extracted_features_mask  = tr.mask_df(raster_mask,
-                                   original_df=extracted_features)
+
+original_df = [ target_data, extracted_features]
+ 
+target_data_mask, extracted_features_mask  = tr.mask_df(raster_mask,
+                                   original_df=original_df,
+                                   reset_index = False)
+print(target_data_mask.head())
+extracted_features_mask.head()
 
 
-#%% read target data & mask out non-CA values
-
-target_data = tr.targetData("F:/5year/Fires/")
-
-target_data_mask  = tr.mask_df(raster_mask, 
-                               original_df = target_data)
-
-
-#%%
-missing_mask =(extracted_features_mask['tmx__number_cwt_peaks__n_12'] == -9999)  
-
-target_data_mask = target_data_mask[~missing_mask]
-
-extracted_features_mask = extracted_features_mask[~missing_mask]
 
 #%% join and test train split yX data
 
-obj = [target_data_mask, extracted_features_mask]
-
+obj = [target_data_mask,extracted_features_mask]
+ 
 #from sklearn.preprocessing import StandardScaler as scaler
 X_train, X_test, y_train, y_test = md.get_data(obj, 
                                                stratify=True,
