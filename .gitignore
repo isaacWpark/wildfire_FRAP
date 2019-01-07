@@ -1,8 +1,12 @@
 **my_df.csv
 **_features/
+**_target/
 **/TestOutputs/
 **/Data/Actual/
 # Created by https://www.gitignore.io/api/python
+
+*.csv
+
 
 *.err
 *.out
